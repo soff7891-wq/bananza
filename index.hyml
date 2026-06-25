@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fruit Clicker</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(180deg, #1b1b2f, #111);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .app {
+      text-align: center;
+      padding: 24px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+    }
+
+    .score {
+      font-size: 28px;
+      margin: 20px 0;
+      color: #7CFF6B;
+      font-weight: bold;
+    }
+
+    .fruit {
+      width: 180px;
+      height: 180px;
+      border: none;
+      border-radius: 50%;
+      font-size: 80px;
+      background: radial-gradient(circle at top, #ffb347, #ff6a00);
+      box-shadow: 0 0 25px rgba(255, 140, 0, 0.5);
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .fruit:active {
+      transform: scale(0.95);
+    }
+
+    .info {
+      margin-top: 18px;
+      font-size: 14px;
+      color: #bbb;
+    }
+
+    .btn {
+      margin-top: 20px;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 12px;
+      background: #2ecc71;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .btn:hover {
+      background: #27ae60;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>🍓 Fruit Clicker</h1>
+    <div class="score">Фрукты: <span id="score">0</span></div>
+
+    <button class="fruit" onclick="addFruit()">🍎</button>
+
+    <div class="info">Нажимай на фрукт и набирай очки</div>
+
+    <button class="btn" onclick="resetScore()">Сбросить</button>
+  </div>
+
+  <script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    let score = localStorage.getItem("fruit_score") || 0;
+    const scoreEl = document.getElementById("score");
+    scoreEl.textContent = score;
+
+    function addFruit() {
+      score++;
+      scoreEl.textContent = score;
+      localStorage.setItem("fruit_score", score);
+      tg.HapticFeedback.impactOccurred("light");
+    }
+
+    function resetScore() {
+      score = 0;
+      scoreEl.textContent = score;
+      localStorage.setItem("fruit_score", score);
+    }
+  </script>
+</body>
+</html>
