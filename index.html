@@ -1,110 +1,119 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fruit Clicker</title>
-  <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: linear-gradient(180deg, #1b1b2f, #111);
-      color: white;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+    <title>Garden Coin</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --secondary: #FF9800;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--tg-theme-bg-color, #f0f4f8);
+            color: var(--tg-theme-text-color, #000000);
+            overflow: hidden; /* Убираем скролл */
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
 
-    .app {
-      text-align: center;
-      padding: 24px;
-      width: 100%;
-      max-width: 420px;
-    }
+        /* --- ФОНЫ (Меняются каждые 10к) --- */
+        .garden-bg {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -2;
+            background: linear-gradient(to bottom, #8BC34A, #CDDC39); /* День */
+            transition: background 1s, filter 1s;
+        }
+        
+        body.level-10 .garden-bg { background: radial-gradient(circle, #2c3e50, #000); filter: brightness(0.6); } /* Ночь */
+        body.level-20 .garden-bg { background: linear-gradient(45deg, #ff9a9e, #fad0c4); } /* Закат */
 
-    h1 {
-      margin-bottom: 10px;
-    }
+        /* --- ИНТЕРФЕЙС --- */
+        .ui-layer {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
 
-    .score {
-      font-size: 28px;
-      margin: 20px 0;
-      color: #7CFF6B;
-      font-weight: bold;
-    }
+        #score-display {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
 
-    .fruit {
-      width: 180px;
-      height: 180px;
-      border: none;
-      border-radius: 50%;
-      font-size: 80px;
-      background: radial-gradient(circle at top, #ffb347, #ff6a00);
-      box-shadow: 0 0 25px rgba(255, 140, 0, 0.5);
-      cursor: pointer;
-      transition: transform 0.1s ease;
-    }
+        .stats-bar {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+        }
 
-    .fruit:active {
-      transform: scale(0.95);
-    }
+        .stat-item h3 { margin: 0; font-size: 0.9rem; color: #555; }
+        .stat-item span { font-weight: bold; }
 
-    .info {
-      margin-top: 18px;
-      font-size: 14px;
-      color: #bbb;
-    }
+        /* --- КНОПКА (ОВОЩ) --- */
+        #click-btn {
+            width: 240px;
+            height: 240px;
+            border-radius: 50%;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.1s;
+            
+            /* Картинка овоща */
+            background-image: url('https://cdn-icons-png.flaticon.com/512/3161/3161178.png'); 
+            background-size: cover;
+            background-position: center;
+        }
 
-    .btn {
-      margin-top: 20px;
-      padding: 12px 18px;
-      border: none;
-      border-radius: 12px;
-      background: #2ecc71;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-    }
+        body.level-10 #click-btn { 
+            /* Тыква ночью */
+            background-image: url('https://cdn-icons-png.flaticon.com/512/523/523441.png'); 
+        }
+        body.level-20 #click-btn { 
+            /* Арбуз на закате */
+            background-image: url('https://cdn-icons-png.flaticon.com/512/2639/2639194.png'); 
+        }
 
-    .btn:hover {
-      background: #27ae60;
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <h1>🍓 Fruit Clicker</h1>
-    <div class="score">Фрукты: <span id="score">0</span></div>
+        #click-btn:active { transform: scale(0.92); }
 
-    <button class="fruit" onclick="addFruit()">🍎</button>
+        /* Анимация всплывающих цифр */
+        .floating-number {
+            position: absolute;
+            color: #fff;
+            font-weight: bold;
+            font-size: 2rem;
+            pointer-events: none;
+            animation: floatUp 1s forwards;
+            text-shadow: 0 2px 2px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-150px) scale(0.5); opacity: 0; }
+        }
 
-    <div class="info">Нажимай на фрукт и набирай очки</div>
-
-    <button class="btn" onclick="resetScore()">Сбросить</button>
-  </div>
-
-  <script>
-    const tg = window.Telegram.WebApp;
-    tg.expand();
-
-    let score = localStorage.getItem("fruit_score") || 0;
-    const scoreEl = document.getElementById("score");
-    scoreEl.textContent = score;
-
-    function addFruit() {
-      score++;
-      scoreEl.textContent = score;
-      localStorage.setItem("fruit_score", score);
-      tg.HapticFeedback.impactOccurred("light");
-    }
-
-    function resetScore() {
-      score = 0;
-      scoreEl.textContent = score;
-      localStorage.setItem("fruit_score", score);
-    }
-  </script>
-</body>
-</html>
+        /* --- ТАБЫ (Вкладки: Магазин, Профиль, Рулетка) --- */
+        .tabs {
+            display: flex;
+            justify-content: space-between;
+            margin-top:
