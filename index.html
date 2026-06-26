@@ -1,3 +1,19 @@
+Слушай, тут важный момент: **всё это (прокачка, уровни, рулетка, задания, энергия, сохранение прогресса) в одном HTML-файле без сервера сделать нельзя**.
+
+В браузере (на GitHub Pages) данные хранятся только пока открыта вкладка. Как только пользователь закроет Telegram — прогресс исчезнет. Notcoin и подобные игры работают так: клик → телефон шлёт запрос на мощный сервер → сервер проверяет правила (хватает ли энергии, какой уровень) → сервер записывает в базу данных → сервер отвечает телефону «ок, плюс 100 монет».
+
+**НО!** Я могу сделать для тебя **полноценный прототип (MVP)**, который выглядит и ощущается как настоящая игра.
+
+Мы сделаем так:
+1.  **Локальное хранилище (`localStorage`)**: счёт, уровень, энергия будут сохраняться даже после перезагрузки.
+2.  **Прокачка**: магазин улучшений (клики сильнее, авто-клик, максимум энергии).
+3.  **Визуальные изменения**: каждые 10 000 очков фон и кнопка-овощ будут меняться (сад станет ночным, помидор превратится в тыкву и т.д.).
+4.  **Задания и Рулетка**: интерфейс будет, рулетка будет крутить, но награды будут начисляться визуально.
+5.  **Энергия**: нельзя кликать бесконечно, нужно ждать восстановления.
+
+Вот готовый код. Это **один файл `index.html`**. Просто замени всё содержимое своего файла на этот код.
+
+```html
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -116,4 +132,236 @@
         .tabs {
             display: flex;
             justify-content: space-between;
-            margin-top:
+            margin-top: 30px;
+            width: 100%;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            color: #666;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+        .tab-content { display: none; padding: 20px; }
+        .tab-content.active { display: block; }
+
+        /* Стили для магазина */
+        .shop-item {
+            background: white;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-buy {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .btn-buy:disabled { background: #ccc; cursor: not-allowed; }
+
+        /* Рулетка */
+        #roulette-wheel {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            border: 10px solid white;
+            margin: 20px auto;
+            position: relative;
+            overflow: hidden;
+        }
+        .wheel-segment {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            clip-path: polygon(50% 0%, 100% 50%, 50% 100%);
+            transform-origin: bottom center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
+        }
+        #pointer {
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 0;
+            border-left: 15px solid transparent;
+            border-right: 15px solid transparent;
+            border-top: 30px solid red;
+            z-index: 20;
+        }
+        #spin-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: var(--secondary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #cooldown-text { color: red; margin-top: 10px; display: none; }
+
+    </style>
+</head>
+<body>
+
+    <!-- Фон -->
+    <div class="garden-bg"></div>
+
+    <div class="ui-layer">
+        <!-- Счётчик и Энергия -->
+        <div id="score-display">0</div>
+        <div class="stats-bar">
+            <div class="stat-item"><h3>Энергия</h3><span id="energy-val">100 / 100</span></div>
+            <div class="stat-item"><h3>Уровень</h3><span id="level-val">1</span></div>
+            <div class="stat-item"><h3>Прогресс</h3><span id="progress-val">0%</span></div>
+        </div>
+
+        <!-- Главная кнопка -->
+        <button id="click-btn" aria-label="Собрать урожай"></button>
+
+        <!-- Вкладки -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('main')">Главная</button>
+            <button class="tab-btn" onclick="switchTab('shop')">Магазин</button>
+            <button class="tab-btn" onclick="switchTab('profile')">Профиль</button>
+            <button class="tab-btn" onclick="switchTab('roulette')">Рулетка</button>
+        </div>
+
+        <!-- ГЛАВНАЯ -->
+        <div id="main" class="tab-content active">
+            <p style="margin-top:20px;">Кликай по овощу, чтобы собирать урожай. Следи за энергией!</p>
+        </div>
+
+        <!-- МАГАЗИН -->
+        <div id="shop" class="tab-content">
+            <h2>Магазин улучшений</h2>
+            <div class="shop-item">
+                <div>
+                    <b>Сила клика +1</b><br>
+                    <small>Твой клик наносит больше урона... эээ, собирает больше овощей!</small>
+                </div>
+                <button class="btn-buy" onclick="buyUpgrade('clickPower', 10)">Купить за 10</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <b>Макс. энергия +10</b><br>
+                    <small>Больше кликов без ожидания.</small>
+                </div>
+                <button class="btn-buy" onclick="buyUpgrade('maxEnergy', 50)">Купить за 50</button>
+            </div>
+            <div class="shop-item">
+                <div>
+                    <b>Авто-кликер</b><br>
+                    <small>Овощи собираются сами, пока ты спишь.</small>
+                </div>
+                <button class="btn-buy" onclick="buyUpgrade('autoClick', 100)">Купить за 100</button>
+            </div>
+        </div>
+
+        <!-- ПРОФИЛЬ -->
+        <div id="profile" class="tab-content">
+            <h2>Твой профиль</h2>
+            <p>Игрок: <b id="player-name">Садовод</b></p>
+            <p>Всего собрано: <b id="total-harvest">0</b> овощей</p>
+            <p>Рекорд: <b id="high-score">0</b></p>
+            <br>
+            <button class="btn-buy" style="width:100%" onclick="resetGame()">Сбросить прогресс (Осторожно!)</button>
+        </div>
+
+        <!-- РУЛЕТКА -->
+        <div id="roulette" class="tab-content">
+            <h2>Ежедневная рулетка ���
+            <p>Крути раз в 24 часа!</p>
+            
+            <div id="roulette-wheel">
+                <div class="wheel-segment" style="transform: rotate(0deg); background: red;">x2 Монеты</div>
+                <div class="wheel-segment" style="transform: rotate(45deg); background: gold;">50 Энергии</div>
+                <div class="wheel-segment" style="transform: rotate(90deg); background: green;">+1 Уровень</div>
+                <div class="wheel-segment" style="transform: rotate(135deg); background: blue;">Супер Овощ</div>
+                <div class="wheel-segment" style="transform: rotate(180deg); background: purple;">Ничего</div>
+                <div class="wheel-segment" style="transform: rotate(225deg); background: orange;">100 Монет</div>
+                <div class="wheel-segment" style="transform: rotate(270deg); background: pink;">Бонус к клику</div>
+                <div class="wheel-segment" style="transform: rotate(315deg); background: brown;">Грусть</div>
+            </div>
+            <div id="pointer"></div>
+            
+            <button id="spin-btn" onclick="spinRoulette()">КРУТИТЬ РУЛЕТКУ!</button>
+            <div id="cooldown-text">Рулетка доступна снова через 24 часа.</div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        // --- СОСТОЯНИЕ ИГРЫ ---
+        let state = {
+            score: 0,
+            energy: 100,
+            maxEnergy: 100,
+            clickPower: 1,
+            level: 1,
+            totalHarvest: 0,
+            highScore: 0,
+            autoClick: 0, // кол-во авто-кликов в секунду
+            lastSpin: 0,   // timestamp последнего спина
+            spinCooldown: 24 * 60 * 60 * 1000 // 24 часа в мс
+        };
+
+        const ELEMENTS = {
+            scoreEl: document.getElementById('score-display'),
+            energyEl: document.getElementById('energy-val'),
+            levelEl: document.getElementById('level-val'),
+            progressEl: document.getElementById('progress-val'),
+            spinBtn: document.getElementById('spin-btn'),
+            cooldownText: document.getElementById('cooldown-text')
+        };
+
+        // --- ЗАГРУЗКА СОХРАНЕНИЯ ---
+        function loadGame() {
+            const saved = localStorage.getItem('gardenCoinState');
+            if (saved) {
+                state = JSON.parse(saved);
+            }
+            updateUI();
+            checkRouletteStatus();
+            startAutoClicker();
+            
+            // Проверка визуальных изменений (фон/овощ)
+            applyVisuals();
+        }
+
+        function saveGame() {
+            localStorage.setItem('gardenCoinState', JSON.stringify(state));
+        }
+
+        // --- ОСНОВНЫЕ МЕХАНИКИ ---
+        document.getElementById('click-btn').addEventListener('click', () => {
+            if (state.energy >= state.clickPower) {
+                const gain = state.clickPower;
+                state.score += gain;
+                state.energy -= gain;
+                state.totalHarvest += gain;
+                
+                if (state.score > state.highScore) state.highScore = state.score;
+
+                showFloatingText(gain);
+                updateUI();
+                
+                // Проверка уровня
